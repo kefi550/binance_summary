@@ -89,15 +89,6 @@ def get_binance_ticker(symbol: str, target_symbol: str = "USDT") -> float:
     return 0.0
 
 
-def call_liquid_pair_code():
-    url = 'https://api.liquid.com/products'
-    r = requests.request(method='GET',
-                         url=url,
-                         )
-    jpy_pairs = [x for x in r.json() if x['currency'] == 'JPY']
-    return jpy_pairs
-
-
 def get_usd_jpy_balance() -> float:
     url = 'https://api-pub.bitfinex.com/v2/ticker/tUSDJPY'
     r = requests.request(method='GET',
@@ -115,23 +106,14 @@ def normalize_symbol(symbol: str) -> str:
 
 def get_latest_assets_jpy(asset: str = None):
     jpy_assets = {}
-    jpy_pair_codes = call_liquid_pair_code()
     latest_binance_balances = get_latest_balances()
     usd_jpy_balance = get_usd_jpy_balance()
     print(latest_binance_balances)
     for b in latest_binance_balances:
         symbol = normalize_symbol(b['asset'])
         symbol_free = float(b['free'])
-        if symbol in map(lambda x: x['base_currency'], jpy_pair_codes):
-            # JPYに直接換算できるものは直接JPY換算
-            jpy_balance_info = next(
-                x for x in jpy_pair_codes if x['base_currency'] == symbol)
-            jpy_balance = float(jpy_balance_info['last_traded_price'])
-            jpy = jpy_balance * symbol_free
-        else:
-            # JPYに直接換算できなければUSDにしてUSD/JPYを使ってJPY換算
-            usd_balance = get_binance_ticker(symbol)
-            jpy = usd_balance * symbol_free * usd_jpy_balance
+        usd_balance = get_binance_ticker(symbol)
+        jpy = usd_balance * symbol_free * usd_jpy_balance
         jpy_assets[symbol] = jpy_assets.get(symbol, 0) + jpy
     if asset in jpy_assets.keys():
         return jpy_assets[asset]
